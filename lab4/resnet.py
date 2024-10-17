@@ -1,8 +1,9 @@
-import torch
 import torch.nn as nn
 
 
 class BasicBlock(nn.Module):
+    """Basic Block class"""
+
     def __init__(self, in_channels, out_channels, use_batch_norm=False, stride=1):
         super(BasicBlock, self).__init__()
         self.use_batch_norm = use_batch_norm
@@ -39,7 +40,7 @@ class BasicBlock(nn.Module):
 
 
 class ResNet18(nn.Module):
-    def __init__(self, block, num_blocks=2, num_classes=1000, use_batch_norm=False):
+    def __init__(self, block, num_blocks=2, num_classes=1000, use_batch_norm=False, init_weights=False):
         super(ResNet18, self).__init__()
         self.use_batch_norm = use_batch_norm
         self.in_channels = 64
@@ -60,7 +61,8 @@ class ResNet18(nn.Module):
         self.fc = nn.Linear(512, num_classes)
 
         # Инициализация Xavier
-        self.initialize_weights()
+        if init_weights:
+            self.initialize_weights()
 
     def initialize_weights(self):
         for m in self.modules():
@@ -97,3 +99,12 @@ class ResNet18(nn.Module):
         out = self.fc(out)
 
         return out
+
+    def prune(self, threshold):
+        """Прореживание слоев Residual Block на основе порога"""
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d):
+                weights_abs = layer.weight.data.abs()
+                mean_weight = weights_abs.mean()
+                mask = weights_abs > (mean_weight * threshold)
+                layer.weight.data.mul_(mask.float())
