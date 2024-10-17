@@ -1,90 +1,75 @@
 import numpy as np
-import pandas as pd
-
-def gaussian(r):
-    """Gaussian kernel"""
-    return np.exp(-0.5 * r ** 2) / np.sqrt(2 * np.pi)
+from tqdm import tqdm
 
 
-def cosine(x, x_neighbor) -> float:
-    """ Cosine similarity """
-    result = float(1 - np.dot(x, x_neighbor.T) / (np.linalg.norm(x) * np.linalg.norm(x_neighbor)))
-    return result
+class Regression_LOWESS:
+    def __init__(self, method, use_weighing=True, f=0.2, learning_rate=0.1, n_iterations=1000):
+        self.decision_method = method
+        self.use_weighing = use_weighing
+        self.learning_rate = learning_rate
+        self.n_iterations = n_iterations
+        self.f = f
+        self.lowess_weights = []
 
+    @staticmethod
+    def tricube_weight(distance) -> float:
+        """Вычисление весов по трикубической функции."""
+        weight = (1 - np.abs(distance) ** 3) ** 3
+        weight[distance > 1] = 0
+        return weight
 
-class Lowess(object):
-    def __init__(self, metric=None, kernel=None, window_type=None, window_width=None, k=None, p_value=None):
-        self.x_train = None
-        self.y_train = None
-        self.metric = metric if metric is not None else cosine
-        self.kernel = kernel if kernel is not None else gaussian
-        self.window_type = window_type if window_type is not None else 'variable'
-        self.window_width = window_width
-        self.k = k
-        self.p_value = p_value
+    def gradient_descent(self, x, y, weights) -> (float, float):
+        """Градиентный спуск для линейной регрессии."""
+        m = len(y)
+        beta_0 = 0  # Смещение
+        beta_1 = 0  # Наклон
 
-    def fit(self, x_train, y_train):
-        """ Function to store training set """
-        self.x_train = x_train
-        self.y_train = y_train
+        for _ in range(self.n_iterations):
+            predictions = beta_0 + beta_1 * x
+            errors = predictions - y
 
-    def window_function(self, distances: list):
-        weights = []
-        if self.window_type == 'fixed':
-            for (dist, target) in distances:
-                if dist < self.window_width:
-                    weights.append((self.kernel(dist), target))
-                else:
-                    weights.append((0, target))
-        elif self.window_type == 'variable':
-            count = 0
-            for (dist, target) in distances:
-                if count < self.k:
-                    weights.append((self.kernel(dist), target))
-                else:
-                    weights.append((0, target))
-                count += 1
+            # Вычисляем градиенты, взвешенные по весам
+            gradient_0 = (1 / m) * np.sum(weights * errors)
+            gradient_1 = (1 / m) * np.sum(weights * errors * x)
 
-        else:
-            raise ValueError("Window type should be 'fixed' or 'variable'")
-        return weights
+            # Обновление параметров
+            beta_0 -= self.learning_rate * gradient_0
+            beta_1 -= self.learning_rate * gradient_1
 
-    def get_one_prediction(self, emb, delta):
-        distances = []
-        for i, v in enumerate(self.x_train):
-            dist = self.metric(emb, v)
-            distances.append((dist, self.y_train[i]))
+        return beta_0, beta_1
 
-        distances.sort(key=lambda x: x[0])
-        weights_targets = self.window_function(distances)
+    @staticmethod
+    def analytical_decision(x, y, weights) -> (float, float):
+        A = np.vstack([np.ones(len(x)), x]).T
+        W = np.diag(weights)
+        beta = np.linalg.lstsq(W @ A, W @ y, rcond=None)[0]
+        return beta[0], beta[1]
 
-        y_w = [y_i * w_i for (y_i, w_i) in weights_targets]
-        y_w_delta = [y_w_i * delta_i for (y_w_i, delta_i) in zip(y_w, delta)]
-        prediction = sum(y_w) / sum(y_w_delta)
-        return prediction
-
-    def get_all_predictions(self, iter):
-        predictions = np.zeros(len(self.x_train))
-        delta = np.ones(len(self.x_train))
-        for iteration in range(iter):
-            for i in range(0, len(self.x_train)):
-                prediction = self.get_one_prediction(self.x_train[i], delta)
-                predictions[i] = prediction
-
-            residuals = self.y_train - predictions
-            s = np.median(np.abs(residuals))
-            delta = np.clip(residuals / (6.0 * s), -1, 1)
-            delta = (1 - delta ** 2) ** 2
-
-        return predictions
-
-
-def run_my_lowess(x, y):
-    model_lowess = Lowess(metric=cosine,
-                          kernel=gaussian,
-                          window_type='variable',
-                          window_width=10,
-                          k=5)
-    model_lowess.fit(x, y)
-    predictions = model_lowess.get_all_predictions(3)
-    return predictions
+    def fit_predict(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """Реализация LOWESS с помощью градиентного спуска."""
+        n = len(y)
+        smoothed = np.zeros(n)
+        self.lowess_weights = [0] * n
+        r = int(self.f * n)
+        for i in tqdm(range(n), desc="Обучение lOWESS"):
+            # Вычисляем расстояния от текущего x до всех остальных
+            distances = np.abs(x - x[i])
+            # Получаем индексы определенного количества соседей
+            idx = np.argsort(distances)[:r]
+            # Извлекаем x и y для соседей
+            x_neighbors = x[idx]
+            y_neighbors = y[idx]
+            dists_neighbours = distances[idx]
+            # Вычисляем веса каждого соседа для объекта
+            weights = self.tricube_weight(dists_neighbours / dists_neighbours.max())
+            # теперь чтобы достать это в knn, мне надо для каждого объекта положить в этот массив таргет
+            # и веса для этого объекта
+            self.lowess_weights[i] = (list(y_neighbors), list(weights))
+            if self.decision_method == 'gradient_descent':
+                # находим взвешенную линейную регрессию с помощью ГС
+                beta_0, beta_1 = self.gradient_descent(x_neighbors, y_neighbors, weights)
+            else:
+                # находим взвешенную линейную регрессию с помощью аналитического метода
+                beta_0, beta_1 = self.analytical_decision(x_neighbors, y_neighbors, weights)
+            smoothed[i] = beta_0 + beta_1 * x[i]
+        return smoothed
