@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from statistics import mode
-from multiprocessing import Pool
 from sklearn.base import BaseEstimator
 
 
