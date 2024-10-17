@@ -1,5 +1,5 @@
-import numpy as np
 from sklearn.base import BaseEstimator
+from utils.eda import *
 
 
 class LinearRegression(BaseEstimator):
@@ -15,13 +15,13 @@ class LinearRegression(BaseEstimator):
             setattr(self, param_name, param_value)
 
         super(LinearRegression, self).set_params(**params)
-        self.w = None
-        self.eps = eps
         self.batches = []
-        self.diff_log = []
-        self.size_batch = size_batch
-        self.max_epoches = max_epoches
+        self.w = None
+        self.train_losses = []
+        self.test_losses = []
         self.learning_rate = learning_rate
+        self.max_epoches = max_epoches
+        self.size_batch = size_batch
 
     def _stable_sigmoid(self, z: np.ndarray):
         """Sigmoid: функция преобразования предсказания модели в диапазон [0,1]"""
@@ -75,6 +75,7 @@ class LinearRegression(BaseEstimator):
         n_objects, n_features = X.shape
         self.w = np.random.normal(size=n_features)
         y_pred = X @ self.w
+        pred_w = np.random.normal(size=n_features)
         while epoches < self.max_epoches:
             epoches += 1
             indices = np.random.choice(X.shape[0], size=self.size_batch, replace=False)
@@ -88,11 +89,7 @@ class LinearRegression(BaseEstimator):
             # oбновление весов
             self.w -= self.learning_rate * grad
             # проверка на то, что веса действительно изменились
-            current_difference = self._log_loss(y_pred, y_batch)
-            if current_difference < self.eps:
-                break
-
-        print(f"Count of epoches: {epoches}")
+            current_loss = self._log_loss(pred_w, self.w)
 
     def predict_proba(self, X_test):
         """Предсказываем вероятности соотнесения к объекту"""
@@ -101,5 +98,20 @@ class LinearRegression(BaseEstimator):
     def predict(self, X_test):
         """Предсказываем классы"""
         y_pred = self.predict_proba(X_test)
-        y_pred = np.where(y_pred > 0.6, 1, -1)
+        y_pred = np.where(y_pred > 0.55, 1, -1)
         return y_pred
+
+    def fit_test(self, X_train, y_train, X_test, y_test, epochs):
+        self.w = np.random.normal(size=X_train.shape[1])
+        y_pred = X_train @ self.w
+        self.train_losses = np.zeros(epochs)
+        self.test_losses = np.zeros(epochs)
+        for epoch in range(epochs):
+            gradient = self._deriative_log_loss(X_train, y_pred, y_train)
+            self.w -= self.learning_rate * gradient
+            y_pred_train = X_train @ self.w
+            self.train_losses[epoch] = self._log_loss(y_pred_train, y_train)
+
+            y_pred_test = self.predict(X_test)
+            mean_f1 = output_metrics_classification(y_test, y_pred_test)
+            self.test_losses[epoch] = mean_f1['macro avg']['f1-score']

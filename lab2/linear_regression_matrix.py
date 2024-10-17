@@ -1,4 +1,6 @@
 import numpy as np
+
+
 class RidgeRegressionMatrix:
 
     def __init__(self, lambda_: float):
