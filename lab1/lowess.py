@@ -21,8 +21,8 @@ class Regression_LOWESS:
     def gradient_descent(self, x, y, weights) -> (float, float):
         """Градиентный спуск для линейной регрессии."""
         m = len(y)
-        beta_0 = 0  # Смещение
-        beta_1 = 0  # Наклон
+        beta_0 = 0 
+        beta_1 = 0
 
         for _ in range(self.n_iterations):
             predictions = beta_0 + beta_1 * x
