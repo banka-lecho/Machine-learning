@@ -81,16 +81,11 @@ class LinearRegression(BaseEstimator):
         while epoches < self.max_epoches:
             epoches += 1
             indices = np.random.choice(X.shape[0], size=self.size_batch, replace=False)
-            # вычисление батчей
             X_batch = X[indices]
             y_batch = y[indices]
-            # вычисление предсказаний
             y_pred = X_batch @ self.w
-            # вычисление градиента
             grad = self._deriative_log_loss(X_batch, y_pred, y_batch)
-            # oбновление весов
             self.w -= self.learning_rate * grad
-            # проверка на то, что веса действительно изменились
             current_loss = self._log_loss(pred_w, self.w)
 
     def predict_proba(self, X_test):
