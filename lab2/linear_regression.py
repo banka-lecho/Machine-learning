@@ -1,5 +1,7 @@
-from sklearn.base import BaseEstimator
+from sklearn.metrics import f1_score
+
 from utils.eda import *
+from sklearn.base import BaseEstimator
 
 
 class LinearRegression(BaseEstimator):
@@ -102,16 +104,12 @@ class LinearRegression(BaseEstimator):
         return y_pred
 
     def fit_test(self, X_train, y_train, X_test, y_test, epochs):
-        self.w = np.random.normal(size=X_train.shape[1])
-        y_pred = X_train @ self.w
-        self.train_losses = np.zeros(epochs)
-        self.test_losses = np.zeros(epochs)
-        for epoch in range(epochs):
+        self.w = np.zeros(X_train.shape[1])
+        self.train_losses = np.zeros(self.max_epoches)
+        self.test_metrics = np.zeros(self.max_epoches)
+        for epoch in range(self.max_epoches):
+            y_pred = X_train @ self.w
             gradient = self._deriative_log_loss(X_train, y_pred, y_train)
             self.w -= self.learning_rate * gradient
-            y_pred_train = X_train @ self.w
-            self.train_losses[epoch] = self._log_loss(y_pred_train, y_train)
-
-            y_pred_test = self.predict(X_test)
-            mean_f1 = output_metrics_classification(y_test, y_pred_test)
-            self.test_losses[epoch] = mean_f1['macro avg']['f1-score']
+            self.train_losses[epoch] = self._log_loss(y_train, self.predict(X_train))
+            self.test_metrics[epoch] = f1_score(y_test, self.predict(X_test))
