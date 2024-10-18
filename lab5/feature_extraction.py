@@ -53,9 +53,6 @@ class FilterFeatureSelector(BaseEstimator):
         self.mutual_infos = None
 
     def get_n_features(self, columns):
-        """
-        Выборка N наиболее важных признаков
-        """
         if self.mutual_infos is None:
             raise RuntimeError("Сначала нужно вызывать метод mutual_information")
 
@@ -64,9 +61,6 @@ class FilterFeatureSelector(BaseEstimator):
         return top_n_features
 
     def mutual_information(self, X, y):
-        """
-        Вычисляет взаимную информацию между признаками X и целевой переменной y.
-        """
         n_features = X.shape[1]
         self.mutual_infos = np.zeros(n_features)
         for i in range(n_features):
