@@ -1,8 +1,9 @@
 from sklearn.metrics import f1_score
 
-from utils.eda import *
+# from utils.eda import *
 from sklearn.base import BaseEstimator
-
+reg_train_losses = np.zeros(150)
+reg_test_losses = np.zeros(150)
 
 class LinearRegression(BaseEstimator):
     def __init__(self, learning_rate=0.1, max_epoches=1000, size_batch=60, eps=0.0000001):
@@ -72,7 +73,7 @@ class LinearRegression(BaseEstimator):
         return np.array(1 / y_pred.shape[0] * np.dot(X.T, (y - y_pred)))
 
     def fit(self, X: np.ndarray, y: np.ndarray):
-        """Обучение линейной регрессии на градиентном спуске: модификация Adam"""
+        """Обучение линейной регрессии на градиентном спуске"""
         epoches = 0
         n_objects, n_features = X.shape
         self.w = np.random.normal(size=n_features)
@@ -88,6 +89,9 @@ class LinearRegression(BaseEstimator):
             self.w -= self.learning_rate * grad
             current_loss = self._log_loss(pred_w, self.w)
 
+            reg_test_losses[epoch] = accuracy_score(y_test, self.predict(X_test))
+            reg_train_losses[epoch] = np.mean(np.log(1 + np.exp(-y_train * self.predict(X_train))))
+
     def predict_proba(self, X_test):
         """Предсказываем вероятности соотнесения к объекту"""
         return X_test @ self.w
@@ -95,16 +99,5 @@ class LinearRegression(BaseEstimator):
     def predict(self, X_test):
         """Предсказываем классы"""
         y_pred = self.predict_proba(X_test)
-        y_pred = np.where(y_pred > 0.55, 1, -1)
+        y_pred = np.where(y_pred > 0.60, 1, -1)
         return y_pred
-
-    def fit_test(self, X_train, y_train, X_test, y_test, epochs):
-        self.w = np.zeros(X_train.shape[1])
-        self.train_losses = np.zeros(self.max_epoches)
-        self.test_metrics = np.zeros(self.max_epoches)
-        for epoch in range(self.max_epoches):
-            y_pred = X_train @ self.w
-            gradient = self._deriative_log_loss(X_train, y_pred, y_train)
-            self.w -= self.learning_rate * gradient
-            self.train_losses[epoch] = self._log_loss(y_train, self.predict(X_train))
-            self.test_metrics[epoch] = f1_score(y_test, self.predict(X_test))
