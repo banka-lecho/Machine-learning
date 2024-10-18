@@ -62,12 +62,6 @@ class LinearRegression(BaseEstimator):
         softmax = numerator / denominator
         return softmax
 
-    def cross_entropy(y_pred: np.ndarray, y: np.ndarray, epsilon=1e-9):
-        """Кросс-энтропийная функция потерь в многоклассовой классификации"""
-        n = y_pred.shape[0]
-        ce = -np.sum(y * np.log(y_pred + epsilon)) / n
-        return ce
-
     def gradient_softmax(self, X: np.ndarray, y_pred: np.ndarray, y: np.ndarray):
         """Градиент кросс-энтропийной функции потерь"""
         return np.array(1 / y_pred.shape[0] * np.dot(X.T, (y - y_pred)))
