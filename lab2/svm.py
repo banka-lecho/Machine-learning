@@ -1,13 +1,9 @@
 class SVMClassifier:
   def __init__(self, kernel='linear', C=0, degree=3, gamma=0.1, learning_rate=0.001, epochs=10):
     self.kernel = kernel
-    # параметр регуляризации, который контролирует баланс между максимизацией разделяющей границы и минимизацией ошибки классификации.
     self.C = C 
-    # degree: степень полиномиального ядра.
     self.degree = degree
-    # gamma: параметр для RBF ядра, который определяет ширину гауссовой функции 
     self.gamma = gamma 
-    #  скорость обучения для обновления весов.
     self.learning_rate = learning_rate
     self.epochs = epochs
     self.w = None
@@ -42,31 +38,19 @@ class SVMClassifier:
           return self.polynomial_kernel(X1, X2)
 
   def fit(self, X, y, X_test, y_test):
-        # инициализируем веса
         self.w = np.zeros(X.shape[1])
-        # коэф-ты Лагранжа
         self.alpha = np.zeros(X.shape[0])
-        # вычисляется матрица ядра K, которая содержит расстояния между всеми парами точек
         K = self.eval_kernel(X, X)
 
-        # проходимся по эпохам
         for ep in range(self.epochs):
-            # проходимся по всем объектам выборки 
             for i in range(X.shape[0]):
-              # если условие для ошибки классификации не выполняется,
-              # коэффициент Лагранжа alpha[i] увеличивается на скорость обучения.
               prediction = np.sum(self.alpha * y * K[i]) - self.b
-              # есди мы неправильно классифицировали объект, то он лежит в зоне ошибки
-              # если он такой неоднозначный, то давайте добавим его в массив опорных векторов, чтобы
-              # модель училась на нем в том числе
               if y[i] * prediction < 1:
                   self.alpha[i] += self.learning_rate
 
               if prediction >= 1:
-                  # просто добавляем регуляризацию
                   self.w = np.dot(X.T, self.alpha * y)
               else:
-                  # если нет, то исправляем 
                   self.w = np.clip(np.dot(X.T, self.alpha * y) - 2 * self.C * self.w, -0.1, 1e10)
               self.b = np.mean(y - np.dot(X, self.w))
 
