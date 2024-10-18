@@ -23,7 +23,7 @@ class Perceptron(torch.nn.Module):
                 self.layers.add_module('batch_norm{}'.format(i),
                                        torch.nn.BatchNorm1d(hidden_dim))
 
-                self.layers.add_module('relu{}'.format(i), torch.nn.ReLU())
+            self.layers.add_module('relu{}'.format(i), torch.nn.ReLU())
             self.layers.add_module('dropout{}'.format(i), torch.nn.Dropout(p=p))
             prev_size = hidden_dim
 
