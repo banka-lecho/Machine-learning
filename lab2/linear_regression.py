@@ -72,7 +72,7 @@ class LinearRegression(BaseEstimator):
         """Градиент кросс-энтропийной функции потерь"""
         return np.array(1 / y_pred.shape[0] * np.dot(X.T, (y - y_pred)))
 
-    def fit(self, X: np.ndarray, y: np.ndarray):
+    def fit(self, X: np.ndarray, y: np.ndarray, X_test, y_test):
         """Обучение линейной регрессии на градиентном спуске"""
         epoches = 0
         n_objects, n_features = X.shape
